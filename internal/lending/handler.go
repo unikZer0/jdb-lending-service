@@ -4,19 +4,29 @@ import (
 	"apiservice/internal/auth"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
 )
 
-func HandleDigitalLending(c echo.Context) error {
+type Handler struct {
+	AuthURL    string
+	UserID     string
+	SecretID   string
+	LendingURL string
+	SecretKey  string
+}
 
-	authURL := os.Getenv("JDB_AUTH_URL")
-	userID := os.Getenv("JDB_USER_ID")
-	secretID := os.Getenv("JDB_SECRET_ID")
-	lendingURL := os.Getenv("JDB_LENDING_URL")
-	secretKey := os.Getenv("JDB_SECRET_KEY")
+func NewHandler(authURL, userID, secretID, lendingURL, secretKey string) *Handler {
+	return &Handler{
+		AuthURL:    authURL,
+		UserID:     userID,
+		SecretID:   secretID,
+		LendingURL: lendingURL,
+		SecretKey:  secretKey,
+	}
+}
+func (h *Handler) HandleDigitalLending(c echo.Context) error {
 
 	var req struct {
 		RequestID string
@@ -24,15 +34,16 @@ func HandleDigitalLending(c echo.Context) error {
 		Language  string
 	}
 	c.Bind(&req)
-	token, jdbErr, err := auth.GetJDBToken(authURL, userID, secretID, fmt.Sprintf("%d", time.Now().Unix()))
+	token, jdbErr, err := auth.GetJDBToken(h.AuthURL, h.UserID, h.SecretID, fmt.Sprintf("%d", time.Now().Unix()))
 	if err != nil {
 
 		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Internal Connection Error"})
 	}
 	if jdbErr != nil {
+		fmt.Println("here")
 		return c.JSON(http.StatusServiceUnavailable, jdbErr)
 	}
-	result, lendingJdbErr, err := FetchLendingURL(lendingURL, token, req.CIF, req.RequestID, req.Language, secretKey)
+	result, lendingJdbErr, err := FetchLendingURL(h.LendingURL, token, req.CIF, req.RequestID, req.Language, h.SecretKey)
 
 	if err != nil {
 		return c.JSON(http.StatusServiceUnavailable, jdbErr)
