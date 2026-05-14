@@ -1,7 +1,7 @@
-package lending
+package handler
 
 import (
-	"apiservice/internal/auth"
+	"apiservice/internal/service"
 	"fmt"
 	"net/http"
 	"time"
@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type Handler struct {
+type JDBAuthHandler struct {
 	AuthURL    string
 	UserID     string
 	SecretID   string
@@ -17,8 +17,8 @@ type Handler struct {
 	SecretKey  string
 }
 
-func NewHandler(authURL, userID, secretID, lendingURL, secretKey string) *Handler {
-	return &Handler{
+func NewJDBAuthHandler(authURL, userID, secretID, lendingURL, secretKey string) *JDBAuthHandler {
+	return &JDBAuthHandler{
 		AuthURL:    authURL,
 		UserID:     userID,
 		SecretID:   secretID,
@@ -26,15 +26,15 @@ func NewHandler(authURL, userID, secretID, lendingURL, secretKey string) *Handle
 		SecretKey:  secretKey,
 	}
 }
-func (h *Handler) HandleDigitalLending(c echo.Context) error {
+func (h *JDBAuthHandler) HandleDigitalLending(c echo.Context) error {
 
 	var req struct {
-		RequestID string
-		CIF       string
-		Language  string
+		RequestID string `json:"requestId"`
+		CIF       string `json:"cif"`
+		Language  string `json:"language"`
 	}
 	c.Bind(&req)
-	token, jdbErr, err := auth.GetJDBToken(h.AuthURL, h.UserID, h.SecretID, fmt.Sprintf("%d", time.Now().Unix()))
+	token, jdbErr, err := service.GetJDBToken(h.AuthURL, h.UserID, h.SecretID, fmt.Sprintf("%d", time.Now().Unix()))
 	if err != nil {
 
 		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Internal Connection Error"})
@@ -43,7 +43,7 @@ func (h *Handler) HandleDigitalLending(c echo.Context) error {
 		fmt.Println("here")
 		return c.JSON(http.StatusServiceUnavailable, jdbErr)
 	}
-	result, lendingJdbErr, err := FetchLendingURL(h.LendingURL, token, req.CIF, req.RequestID, req.Language, h.SecretKey)
+	result, lendingJdbErr, err := service.FetchLendingURL(h.LendingURL, token, req.RequestID, req.CIF, req.Language, h.SecretKey)
 
 	if err != nil {
 		return c.JSON(http.StatusServiceUnavailable, jdbErr)

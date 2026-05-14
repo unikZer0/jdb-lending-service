@@ -1,7 +1,7 @@
-package lending
+package service
 
 import (
-	"apiservice/internal/auth"
+	"apiservice/internal/models"
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -12,13 +12,12 @@ import (
 	"net/http"
 )
 
-func FetchLendingURL(url, token, reqID, cif, language, secretKey string) (map[string]interface{}, *auth.JDBErrorResponse, error) {
-	payload := auth.LendingRequest{
+func FetchLendingURL(url, token, reqID, cif, language, secretKey string) (map[string]interface{}, *models.JDBErrorResponse, error) {
+	payload := models.LendingRequest{
 		RequestID: reqID,
 		CIF:       cif,
 		Language:  "EN",
 	}
-	rawBody := fmt.Sprintf(`{"requestId":"%s","cif":"%s","language":"%s"}`, reqID, cif, "EN")
 
 	body, _ := json.Marshal(payload)
 	signature := ComputeHmac256(string(body), secretKey)
@@ -27,9 +26,6 @@ func FetchLendingURL(url, token, reqID, cif, language, secretKey string) (map[st
 	req.Header.Set("Authorization", token)
 	req.Header.Set("SignedHash", signature)
 
-	fmt.Println("Raw JSON Body for Signing:", rawBody)
-	fmt.Println("Authorization :", token)
-	fmt.Println("SignedHash :", signature)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -43,7 +39,7 @@ func FetchLendingURL(url, token, reqID, cif, language, secretKey string) (map[st
 	}
 	if resp.StatusCode != http.StatusOK {
 		fmt.Println("Error from Lending Server:", string(respData))
-		var jdbErr auth.JDBErrorResponse
+		var jdbErr models.JDBErrorResponse
 		json.Unmarshal(respData, &jdbErr)
 		return nil, &jdbErr, nil
 	}
