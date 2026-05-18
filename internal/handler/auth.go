@@ -3,16 +3,23 @@ package handler
 import (
 	"apiservice/internal/models"
 	"apiservice/internal/repository"
+	"apiservice/internal/service"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 )
 
 type Handler struct {
+	authService service.AuthService
 }
 
 func NewHandler() *Handler {
-	return &Handler{}
+	authRepo := repository.NewAuthRepository()
+	authService := service.NewAuthService(authRepo)
+
+	return &Handler{
+		authService: authService,
+	}
 }
 
 func (h *Handler) Register(c echo.Context) error {
@@ -21,7 +28,7 @@ func (h *Handler) Register(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 	}
 
-	_, err := repository.Register(req)
+	err := h.authService.Register(req)
 	if err != nil {
 		if err.Error() == "email already registered" || err.Error() == "username already taken" {
 			return c.JSON(http.StatusConflict, map[string]string{"error": err.Error()})
@@ -29,7 +36,7 @@ func (h *Handler) Register(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to register user"})
 	}
 
-	return c.JSON(http.StatusCreated, map[string]string{"status": "regsiter successfully"})
+	return c.JSON(http.StatusCreated, map[string]string{"status": "registered successfully"})
 }
 
 func (h *Handler) Login(c echo.Context) error {
@@ -38,7 +45,7 @@ func (h *Handler) Login(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 	}
 
-	response, err := repository.Login(req)
+	response, err := h.authService.Login(req)
 	if err != nil {
 		if err.Error() == "invalid email or password" {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"error": err.Error()})
